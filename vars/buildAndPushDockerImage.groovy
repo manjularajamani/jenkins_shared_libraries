@@ -1,10 +1,7 @@
-def call(String aws_account_id, String region, String ecr_repoName, String tagName){
-    
-    sh """
-
-     aws ecr get-login-password --region ${region} | docker login --username AWS --password-stdin ${aws_account_id}.dkr.ecr.${region}.amazonaws.com  
-     docker build -t ${ecr_repoName} .
-     docker tag ${ecr_repoName}:latest ${aws_account_id}.dkr.ecr.${region}.amazonaws.com/${ecr_repoName}:${tagName}
-     docker push ${aws_account_id}.dkr.ecr.${region}.amazonaws.com/${ecr_repoName}:${tagName}
-    """
+def dockerBuildAndPush(){
+    sh 'rm -f ~/.dockercfg ~/.docker/config.json || true'
+        withDockerRegistry(credentialsId: 'ecr:us-east-2:aws', url: 'https://938508880305.dkr.ecr.us-east-2.amazonaws.com') {
+             def customImage = docker.build("node-app:${env.BUILD_ID}")
+             customImage.push()
+}    
 }
