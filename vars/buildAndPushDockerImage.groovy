@@ -1,9 +1,8 @@
-def call(String repository, int hubUser, String password, String tagName){
+def call(String aws_account_id, String region, String ecr_repoName, String tagName){
     
     sh """
-    //  docker login --username="${hubUser}" --password="${password}"
-     docker build -t ${hubUser}/${repository} . 
-     docker image tag ${hubUser}/${repository} ${hubUser}/${repository}:${tagName}
-     docker push ${hubUser}/${repository}:${imageTag}
+     docker build -t ${ecr_repoName} .
+     docker tag ${ecr_repoName}:latest ${aws_account_id}.dkr.ecr.${region}.amazonaws.com/${ecr_repoName}:${tagName}
+     docker push ${aws_account_id}.dkr.ecr.${region}.amazonaws.com/${ecr_repoName}:${tagName}
     """
 }
