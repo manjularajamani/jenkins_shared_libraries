@@ -1,6 +1,6 @@
 ### Pipeline for Cloning a Repository, Building, Tagging, and Pushing an Image to AWS ECR
 
-These below steps are performed in Jenkins dashboard
+The following steps are carried out in the Jenkins dashboard:
 
 **Prerequisite**
 
