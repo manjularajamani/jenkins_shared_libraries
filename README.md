@@ -4,7 +4,7 @@ The following steps are carried out in the Jenkins dashboard:
 
 **Prerequisite**
 
-- Install the `AWS Credentials` plugin 
+- Install the `AWS Credential` and `AWS ECR` plugin 
 - To access your AWS account, you need to create credentials using your `ACCESS_KEY` and `SECRET_KEY`
 - Use Credential ID on pipeline
 
