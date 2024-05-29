@@ -18,6 +18,8 @@ def buildandpush(String registryUrl, String credentialId) {
         def customImage = docker.build("sit-ui-dev:${env.BUILD_ID}")
         customImage.push()
     }
+    return customImage
+
 }
 
 def deploy(cluster, service, task_family, image, region, boolean is_wait = true, String awscli = "aws") {
