@@ -4,12 +4,11 @@ def clonerepo(String repoUrl, String branch = 'master') {
         $class: 'GitSCM',
         branches: [[name: "*/${branch}"]],
         doGenerateSubmoduleConfigurations: false,
-        extensions: [[$class: 'CleanCheckout']], // Optional: cleans the workspace before checking out
+        extensions: [[$class: 'CleanCheckout']], // Cleans the workspace before checking out
         submoduleCfg: [],
         userRemoteConfigs: [[url: repoUrl]]
     ])
 }
-
 
 // Build and Push image on AWS ECR
 def buildandpush(String registryUrl, String credentialId) {
@@ -18,13 +17,13 @@ def buildandpush(String registryUrl, String credentialId) {
         def customImage = docker.build("sit-ui-dev:${env.BUILD_ID}")
         customImage.push()
     }
-
 }
 
-def deploy(cluster, service, task_family, image, region, boolean is_wait = true, String awscli = "aws") {
+// Deploy ECS service with new task definition
+def deploy(cluster, service, taskFamily, image, region, boolean isWait = true, String awscli = "aws") {
     sh """
         OLD_TASK_DEF=\$(${awscli} ecs describe-task-definition \
-                                --task-definition ${task_family} \
+                                --task-definition ${taskFamily} \
                                 --output json --region ${region})
 
         NEW_TASK_DEF=\$(echo \$OLD_TASK_DEF | \
@@ -39,16 +38,15 @@ def deploy(cluster, service, task_family, image, region, boolean is_wait = true,
                             placementConstraints: .placementConstraints}')
 
         ${awscli} ecs register-task-definition \
-                --family ${task_family} \
-                --cli-input-json \
-                "\$(echo \$FINAL_TASK)" --region "${region}"
+                --family ${taskFamily} \
+                --cli-input-json "\$(echo \$FINAL_TASK)" \
+                --region "${region}"
 
-        if [ \$? -eq 0 ]
-        then
-            echo "New task has been registered"
-        else
+        if [ \$? -ne 0 ]; then
             echo "Error in task registration"
             exit 1
+        else
+            echo "New task has been registered"
         fi
         
         echo "Now deploying new version..."
@@ -57,10 +55,10 @@ def deploy(cluster, service, task_family, image, region, boolean is_wait = true,
             --cluster ${cluster} \
             --service ${service} \
             --force-new-deployment \
-            --task-definition ${task_family} \
+            --task-definition ${taskFamily} \
             --region "${region}"
         
-        if ${is_wait}; then
+        if ${isWait}; then
             echo "Waiting for deployment to reflect changes"
             ${awscli} ecs wait services-stable \
                 --cluster ${cluster} \
@@ -70,6 +68,7 @@ def deploy(cluster, service, task_family, image, region, boolean is_wait = true,
     """
 }
 
+// Restart ECS service
 def restart(cluster, service, region, String awscli = "aws") {
     sh """
         ${awscli} ecs update-service \
@@ -80,6 +79,7 @@ def restart(cluster, service, region, String awscli = "aws") {
     """
 }
 
+// Wait for ECS service to stabilize
 def wait(cluster, service, region, String awscli = "aws") {
     sh """
         ${awscli} ecs wait services-stable \
