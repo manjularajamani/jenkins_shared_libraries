@@ -22,67 +22,87 @@ def buildandpush(String registryUrl, String credentialId) {
 // Deploy ECS service with new task definition
 def deploy(cluster, service, taskFamily, image, region, boolean isWait = true, String awscli = "aws") {
     sh """
-        
+        set -e  # Exit on any error
 
-        NEW_TASK_DEF=\$(echo \$OLD_TASK_DEF | \
-                    jq --arg NDI ${image} '.taskDefinition.containerDefinitions[0].image=\$NDI')
+        echo "Describing the current task definition for family ${taskFamily}"
+        OLD_TASK_DEF=\$(${awscli} ecs describe-task-definition \
+                                --task-definition ${taskFamily} \
+                                --output json --region ${region})
 
-        FINAL_TASK=\$(echo \$NEW_TASK_DEF | \
-                    jq '.taskDefinition | \
-                            {family: .family, \
-                            networkMode: .networkMode, \
-                            volumes: .volumes, \
-                            containerDefinitions: .containerDefinitions, \
-                            placementConstraints: .placementConstraints}')
+        # Ensure jq is installed
+        if ! command -v jq &> /dev/null
+        then
+            echo "jq could not be found, please install it"
+            exit 1
+        fi
 
-        ${awscli} ecs register-task-definition \
+        echo "Updating the image in the task definition"
+        NEW_TASK_DEF=\$(echo "\$OLD_TASK_DEF" | jq --arg NDI "${image}" '.taskDefinition.containerDefinitions[0].image=\$NDI')
+
+        echo "Creating the final task definition JSON"
+        FINAL_TASK=\$(echo "\$NEW_TASK_DEF" | jq '.taskDefinition | {
+                            family: .family,
+                            networkMode: .networkMode,
+                            volumes: .volumes,
+                            containerDefinitions: .containerDefinitions,
+                            placementConstraints: .placementConstraints
+                        }')
+
+        echo "Validating the final task JSON"
+        echo "\$FINAL_TASK" | jq . > /dev/null
+        if [ \$? -ne 0 ]; then
+            echo "Invalid JSON created for task definition"
+            echo "FINAL_TASK: \$FINAL_TASK"
+            exit 1
+        fi
+
+        echo "Registering the new task definition"
+        REGISTER_OUTPUT=\$(${awscli} ecs register-task-definition \
                 --family ${taskFamily} \
-                --cli-input-json "\$(echo \$FINAL_TASK)" \
-                --region "${region}"
+                --cli-input-json "\$FINAL_TASK" \
+                --region "${region}")
 
         if [ \$? -ne 0 ]; then
-            echo "Error in task registration"
+            echo "Error registering new task definition"
+            echo "REGISTER_OUTPUT: \$REGISTER_OUTPUT"
             exit 1
-        else
-            echo "New task has been registered"
         fi
-        
-        echo "Now deploying new version..."
-                    
-        ${awscli} ecs update-service \
+
+        echo "New task has been registered successfully"
+        echo "REGISTER_OUTPUT: \$REGISTER_OUTPUT"
+
+        echo "Updating the ECS service to use the new task definition"
+        UPDATE_OUTPUT=\$(${awscli} ecs update-service \
             --cluster ${cluster} \
             --service ${service} \
             --force-new-deployment \
             --task-definition ${taskFamily} \
-            --region "${region}"
-        
+            --region "${region}")
+
+        if [ \$? -ne 0 ]; then
+            echo "Error updating the service"
+            echo "UPDATE_OUTPUT: \$UPDATE_OUTPUT"
+            exit 1
+        fi
+
+        echo "Service update initiated successfully"
+        echo "UPDATE_OUTPUT: \$UPDATE_OUTPUT"
+
         if ${isWait}; then
             echo "Waiting for deployment to reflect changes"
-            ${awscli} ecs wait services-stable \
+            WAIT_OUTPUT=\$(${awscli} ecs wait services-stable \
                 --cluster ${cluster} \
                 --service ${service} \
-                --region "${region}"
+                --region "${region}")
+
+            if [ \$? -ne 0 ]; then
+                echo "Error waiting for service to stabilize"
+                echo "WAIT_OUTPUT: \$WAIT_OUTPUT"
+                exit 1
+            fi
+
+            echo "Service is stable"
+            echo "WAIT_OUTPUT: \$WAIT_OUTPUT"
         fi
-    """
-}
-
-// Restart ECS service
-def restart(cluster, service, region, String awscli = "aws") {
-    sh """
-        ${awscli} ecs update-service \
-            --cluster ${cluster} \
-            --service ${service} \
-            --force-new-deployment \
-            --region "${region}"
-    """
-}
-
-// Wait for ECS service to stabilize
-def wait(cluster, service, region, String awscli = "aws") {
-    sh """
-        ${awscli} ecs wait services-stable \
-            --cluster ${cluster} \
-            --service ${service} \
-            --region "${region}"
     """
 }
