@@ -28,11 +28,11 @@ def deploy(cluster, service, taskFamily, image, region, boolean isWait = true, S
         if ! command -v jq &> /dev/null
         then
             echo "jq could not be found, installing it"
-            apt-get update && apt-get install -y jq
+            sudo apt-get update && sudo apt-get install -y jq
         fi
 
         echo "Updating the image in the task definition"
-        OLD_TASK_DEF=\$(${awscli} ecs describe-task-definition --task-definition ${taskFamily} --region ${region})
+        // OLD_TASK_DEF=\$(${awscli} ecs describe-task-definition --task-definition ${taskFamily} --region ${region})
         NEW_TASK_DEF=\$(echo "\${OLD_TASK_DEF}" | jq --arg NDI "${image}" '.taskDefinition.containerDefinitions[0].image=\$NDI')
 
         echo "Creating the final task definition JSON"
