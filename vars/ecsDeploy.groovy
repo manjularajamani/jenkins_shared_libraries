@@ -22,9 +22,7 @@ def buildandpush(String registryUrl, String credentialId) {
 // Deploy ECS service with new task definition
 def deploy(cluster, service, taskFamily, image, region, boolean isWait = true, String awscli = "aws") {
     sh """
-        OLD_TASK_DEF=\$(${awscli} ecs describe-task-definition \
-                                --task-definition ${taskFamily} \
-                                --output json --region ${region})
+        
 
         NEW_TASK_DEF=\$(echo \$OLD_TASK_DEF | \
                     jq --arg NDI ${image} '.taskDefinition.containerDefinitions[0].image=\$NDI')
