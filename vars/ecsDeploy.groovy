@@ -32,11 +32,11 @@ def deploy(cluster, service, taskFamily, image, region, boolean isWait = true, S
         fi
 
         echo "Updating the image in the task definition"
-        OLD_TASK_DEF=$(${awscli} ecs describe-task-definition --task-definition ${taskFamily} --region ${region})
-        NEW_TASK_DEF=\$(echo "\$OLD_TASK_DEF" | jq --arg NDI "${image}" '.taskDefinition.containerDefinitions[0].image=\$NDI')
+        OLD_TASK_DEF=\$(${awscli} ecs describe-task-definition --task-definition ${taskFamily} --region ${region})
+        NEW_TASK_DEF=\$(echo "\${OLD_TASK_DEF}" | jq --arg NDI "${image}" '.taskDefinition.containerDefinitions[0].image=\$NDI')
 
         echo "Creating the final task definition JSON"
-        FINAL_TASK=\$(echo "\$NEW_TASK_DEF" | jq '.taskDefinition | {
+        FINAL_TASK=\$(echo "\${NEW_TASK_DEF}" | jq '.taskDefinition | {
                             family: .family,
                             networkMode: .networkMode,
                             volumes: .volumes,
@@ -45,27 +45,27 @@ def deploy(cluster, service, taskFamily, image, region, boolean isWait = true, S
                         }')
 
         echo "Validating the final task JSON"
-        echo "\$FINAL_TASK" | jq . > /dev/null
+        echo "\${FINAL_TASK}" | jq . > /dev/null
         if [ \$? -ne 0 ]; then
             echo "Invalid JSON created for task definition"
-            echo "FINAL_TASK: \$FINAL_TASK"
+            echo "FINAL_TASK: \${FINAL_TASK}"
             exit 1
         fi
 
         echo "Registering the new task definition"
         REGISTER_OUTPUT=\$(${awscli} ecs register-task-definition \
                 --family ${taskFamily} \
-                --cli-input-json "\$FINAL_TASK" \
+                --cli-input-json "\${FINAL_TASK}" \
                 --region "${region}")
 
         if [ \$? -ne 0 ]; then
             echo "Error registering new task definition"
-            echo "REGISTER_OUTPUT: \$REGISTER_OUTPUT"
+            echo "REGISTER_OUTPUT: \${REGISTER_OUTPUT}"
             exit 1
         fi
 
         echo "New task has been registered successfully"
-        echo "REGISTER_OUTPUT: \$REGISTER_OUTPUT"
+        echo "REGISTER_OUTPUT: \${REGISTER_OUTPUT}"
 
         echo "Updating the ECS service to use the new task definition"
         UPDATE_OUTPUT=\$(${awscli} ecs update-service \
@@ -77,12 +77,12 @@ def deploy(cluster, service, taskFamily, image, region, boolean isWait = true, S
 
         if [ \$? -ne 0 ]; then
             echo "Error updating the service"
-            echo "UPDATE_OUTPUT: \$UPDATE_OUTPUT"
+            echo "UPDATE_OUTPUT: \${UPDATE_OUTPUT}"
             exit 1
         fi
 
         echo "Service update initiated successfully"
-        echo "UPDATE_OUTPUT: \$UPDATE_OUTPUT"
+        echo "UPDATE_OUTPUT: \${UPDATE_OUTPUT}"
 
         if ${isWait}; then
             echo "Waiting for deployment to reflect changes"
@@ -93,12 +93,12 @@ def deploy(cluster, service, taskFamily, image, region, boolean isWait = true, S
 
             if [ \$? -ne 0 ]; then
                 echo "Error waiting for service to stabilize"
-                echo "WAIT_OUTPUT: \$WAIT_OUTPUT"
+                echo "WAIT_OUTPUT: \${WAIT_OUTPUT}"
                 exit 1
             fi
 
             echo "Service is stable"
-            echo "WAIT_OUTPUT: \$WAIT_OUTPUT"
+            echo "WAIT_OUTPUT: \${WAIT_OUTPUT}"
         fi
     """
 }
