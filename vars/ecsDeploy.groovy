@@ -32,6 +32,7 @@ def deploy(cluster, service, taskFamily, image, region, boolean isWait = true, S
         fi
 
         echo "Updating the image in the task definition"
+        OLD_TASK_DEF=$(${awscli} ecs describe-task-definition --task-definition ${taskFamily} --region ${region})
         NEW_TASK_DEF=\$(echo "\$OLD_TASK_DEF" | jq --arg NDI "${image}" '.taskDefinition.containerDefinitions[0].image=\$NDI')
 
         echo "Creating the final task definition JSON"
@@ -71,7 +72,7 @@ def deploy(cluster, service, taskFamily, image, region, boolean isWait = true, S
             --cluster ${cluster} \
             --service ${service} \
             --force-new-deployment \
-            --task-definition ${taskFamily} \
+            --task-definition \${REGISTER_OUTPUT.taskDefinition.taskDefinitionArn} \
             --region "${region}")
 
         if [ \$? -ne 0 ]; then
