@@ -24,10 +24,10 @@ def deploy(cluster, service, taskFamily, image, region, boolean isWait = true, S
     sh """
         set -e  # Exit on any error
 
-        echo "Describing the current task definition for family ${taskFamily}"
-        OLD_TASK_DEF=\$(${awscli} ecs describe-task-definition \
-                                --task-definition ${taskFamily} \
-                                --output json --region ${region})
+        // echo "Describing the current task definition for family ${taskFamily}"
+        // OLD_TASK_DEF=\$(${awscli} ecs describe-task-definition \
+        //                         --task-definition ${taskFamily} \
+        //                         --output json --region ${region})
 
         # Ensure jq is installed
         if ! command -v jq &> /dev/null
