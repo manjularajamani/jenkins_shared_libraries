@@ -24,11 +24,11 @@ def deploy(cluster, service, taskFamily, image, region, boolean isWait = true, S
     sh """
         set -e  # Exit on any error
 
-        # Ensure jq is installed
+        # Ensure jq is installed, if not, install it
         if ! command -v jq &> /dev/null
         then
-            echo "jq could not be found, please install it"
-            exit 1
+            echo "jq could not be found, installing it"
+            apt-get update && apt-get install -y jq
         fi
 
         echo "Updating the image in the task definition"
@@ -75,7 +75,7 @@ def deploy(cluster, service, taskFamily, image, region, boolean isWait = true, S
             --task-definition \${REGISTER_OUTPUT.taskDefinition.taskDefinitionArn} \
             --region "${region}")
 
-        if [ \$? -ne 0 ]; then
+        if [ \$? -ne 0]; then
             echo "Error updating the service"
             echo "UPDATE_OUTPUT: \${UPDATE_OUTPUT}"
             exit 1
