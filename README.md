@@ -6,7 +6,13 @@ The following steps are carried out in the Jenkins dashboard:
 
 - Install the `AWS Credential` and `AWS ECR` plugin 
 - To access your AWS account, you need to create credentials using your `ACCESS_KEY` and `SECRET_KEY`
-- Use Credential ID on pipeline
+- Use `Credential ID` on pipeline
+- To access other shared libraries, the Jenkinsfile needs to use the `@Library` annotation
+   -  In the Jenkins dashboard get into the system--> Global Trusted Pipeline Libraries--> click add
+   - Enter the details
+    ![jenkins](https://github.com/user-attachments/assets/4d335eaf-9399-4ab1-970d-86f8d57086d9)
+
+
 
 **Scripted Pipeline**
 
