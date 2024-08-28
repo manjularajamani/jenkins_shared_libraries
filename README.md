@@ -11,7 +11,7 @@ The following steps are carried out in the Jenkins dashboard:
    -  In the Jenkins dashboard get into the system--> Global Trusted Pipeline Libraries--> click add
    - Enter the details
     ![jenkins](https://github.com/user-attachments/assets/4d335eaf-9399-4ab1-970d-86f8d57086d9)
-
+   - Modern SCM (optional)
 
 
 **Scripted Pipeline**
