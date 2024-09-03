@@ -1,104 +1,39 @@
-// Clone the repository
-def clonerepo(String repoUrl, String branch = 'master') {
-    checkout([
-        $class: 'GitSCM',
-        branches: [[name: "*/${branch}"]],
-        doGenerateSubmoduleConfigurations: false,
-        extensions: [[$class: 'CleanCheckout']], // Cleans the workspace before checking out
-        submoduleCfg: [],
-        userRemoteConfigs: [[url: repoUrl]]
-    ])
-}
-
-// Build and Push image on AWS ECR
-def buildandpush(String registryUrl, String credentialId) {
-    sh 'rm -f ~/.dockercfg ~/.docker/config.json || true'
-    docker.withRegistry(registryUrl, credentialId) {
-        def customImage = docker.build("testing:${env.BUILD_ID}")
-        customImage.push()
-    }
-}
-
-// Deploy ECS service with new task definition
-def deploy(cluster, service, taskFamily, image, region, boolean isWait = true, String awscli = "aws") {
+def deployToECS(cluster, service, registryUrl, imageName, region, String awsCli = 'aws') {
     sh """
-        set -e  # Exit on any error
+        set -e
 
-        # Ensure jq is installed, if not, install it
-        if ! command -v jq &> /dev/null
-        then
-            echo "jq could not be found, installing it"
-            sudo apt-get update && sudo apt-get install -y jq
-        fi
+        echo "Fetching current task definition for service ${service}"
+        CURRENT_TASK_DEF_ARN=\$(${awsCli} ecs describe-services --cluster ${cluster} --services ${service} --query "services[0].taskDefinition" --output text --region ${region})
 
-        echo "Updating the image in the task definition"
-        OLD_TASK_DEF=\$(${awscli} ecs describe-task-definition --task-definition ${taskFamily} --region ${region})
-        NEW_TASK_DEF=\$(echo "\${OLD_TASK_DEF}" | jq --arg NDI "${image}" '.taskDefinition.containerDefinitions[0].image=\$NDI')
+        echo "Describing current task definition"
+        CURRENT_TASK_DEF=\$(${awsCli} ecs describe-task-definition --task-definition \${CURRENT_TASK_DEF_ARN} --output json --region ${region})
 
-        echo "Creating the final task definition JSON"
-        FINAL_TASK=\$(echo "\${NEW_TASK_DEF}" | jq '.taskDefinition | {
-                            family: .family,
-                            networkMode: .networkMode,
-                            volumes: .volumes,
-                            containerDefinitions: .containerDefinitions,
-                            placementConstraints: .placementConstraints
-                        }')
+        echo "Updating container image in task definition"
+        NEW_TASK_DEF=\$(echo "\${CURRENT_TASK_DEF}" | jq --arg IMAGE "${registryUrl}/${imageName}:latest" '.taskDefinition.containerDefinitions[0].image=\$IMAGE')
 
-        echo "Validating the final task JSON"
-        echo "\${FINAL_TASK}" | jq . > /dev/null
-        if [ \$? -ne 0 ]; then
-            echo "Invalid JSON created for task definition"
-            echo "FINAL_TASK: \${FINAL_TASK}"
-            exit 1
-        fi
+        echo "Creating new task definition"
+        FINAL_TASK_DEF=\$(echo "\${NEW_TASK_DEF}" | jq '.taskDefinition | { 
+                                family: .family, 
+                                networkMode: .networkMode, 
+                                volumes: .volumes, 
+                                containerDefinitions: .containerDefinitions, 
+                                placementConstraints: .placementConstraints
+                            }')
 
-        echo "Registering the new task definition"
-        REGISTER_OUTPUT=\$(${awscli} ecs register-task-definition \
-                --family ${taskFamily} \
-                --cli-input-json "\${FINAL_TASK}" \
-                --region "${region}")
+        echo "Registering new task definition"
+        REGISTER_OUTPUT=\$(${awsCli} ecs register-task-definition \
+            --cli-input-json "\${FINAL_TASK_DEF}" \
+            --region ${region} \
+            --output json)
 
-        if [ \$? -ne 0 ]; then
-            echo "Error registering new task definition"
-            echo "REGISTER_OUTPUT: \${REGISTER_OUTPUT}"
-            exit 1
-        fi
+        NEW_TASK_DEF_ARN=\$(echo "\${REGISTER_OUTPUT}" | jq -r '.taskDefinition.taskDefinitionArn')
 
-        echo "New task has been registered successfully"
-        echo "REGISTER_OUTPUT: \${REGISTER_OUTPUT}"
+        echo "Updating ECS service to use the new task definition"
+        ${awsCli} ecs update-service --cluster ${cluster} --service ${service} --task-definition \${NEW_TASK_DEF_ARN} --region ${region} --force-new-deployment
 
-        echo "Updating the ECS service to use the new task definition"
-        UPDATE_OUTPUT=\$(${awscli} ecs update-service \
-            --cluster ${cluster} \
-            --service ${service} \
-            --force-new-deployment \
-            --task-definition \${REGISTER_OUTPUT.taskDefinition.taskDefinitionArn} \
-            --region "${region}")
+        echo "Waiting for the service to stabilize"
+        ${awsCli} ecs wait services-stable --cluster ${cluster} --services ${service} --region ${region}
 
-        if [ \$? -ne 0]; then
-            echo "Error updating the service"
-            echo "UPDATE_OUTPUT: \${UPDATE_OUTPUT}"
-            exit 1
-        fi
-
-        echo "Service update initiated successfully"
-        echo "UPDATE_OUTPUT: \${UPDATE_OUTPUT}"
-
-        if ${isWait}; then
-            echo "Waiting for deployment to reflect changes"
-            WAIT_OUTPUT=\$(${awscli} ecs wait services-stable \
-                --cluster ${cluster} \
-                --service ${service} \
-                --region "${region}")
-
-            if [ \$? -ne 0 ]; then
-                echo "Error waiting for service to stabilize"
-                echo "WAIT_OUTPUT: \${WAIT_OUTPUT}"
-                exit 1
-            fi
-
-            echo "Service is stable"
-            echo "WAIT_OUTPUT: \${WAIT_OUTPUT}"
-        fi
+        echo "Service is now stable"
     """
 }

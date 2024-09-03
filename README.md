@@ -19,7 +19,7 @@
 ### The following steps are carried out in the AWS account:
 
 - First, create the ECR repository
-
+- Create the ECS cluster
 
 ## Scripted Pipeline
 
