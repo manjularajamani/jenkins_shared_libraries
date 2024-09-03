@@ -29,7 +29,7 @@ node('vagrant-slave') {
 
     stage('Build and Push Docker Image') {
         def registryUrl = 'https://<aws-account-id>.dkr.ecr.us-east-2.amazonaws.com'
-        def credentialId = 'ecr:us-east-2:<credentials-id>'
+        def credentialId = 'ecr:us-east-2:<credential-id>'
 
 
         dockerBuildAndPush.BuildAndPush(registryUrl, credentialId)
