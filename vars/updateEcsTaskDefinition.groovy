@@ -1,4 +1,4 @@
-def call(String clusterName, String serviceName, String containerName, String newImage, String region) {
+def updateTaskDefinition(String clusterName, String serviceName, String containerName, String newImage, String region) {
     // Define the task definition JSON
     def ecsTaskDef = [
         "containerDefinitions": [
