@@ -1,12 +1,5 @@
-def deployToECS(Map config) {
-    def awsCredentialsId = config.awsCredentialsId
-    def awsRegion = config.awsRegion
-    def ecsClusterName = config.ecsClusterName
-    def ecsServiceName = config.ecsServiceName
-    def ecsTaskFamily = config.ecsTaskFamily
-    def dockerImageTag = config.dockerImageTag
-
-    withCredentials([usernamePassword(credentialsId: awsCredentialsId)]) {
+def deployToECS(String awsCredentialsId, String awsRegion, String ecsClusterName, String ecsServiceName, String ecsTaskFamily, String dockerImageTag) {
+    withCredentials([usernamePassword(credentialsId: awsCredentialsId, usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
         script {
             // Step 1: Fetch the current task definition
             def taskDefinition = sh(
