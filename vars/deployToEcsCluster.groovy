@@ -1,52 +1,24 @@
-def deployToECS(String containerName, String newImage, String region, String executionRoleArn, String taskRoleArn, String cpu, String memory, String cluster, String service, int port) {
-
-    sh """
-        # Prepare the JSON for the task definition
-        json='{
-            "containerDefinitions": [
-                {
-                    "name": "${containerName}",
-                    "image": "${newImage}",
-                    "cpu": 0,
-                    "portMappings": [
-                        {
-                            "containerPort": ${port},
-                            "hostPort": ${port},
-                            "protocol": "tcp"
-                        }
-                    ],
-                    "essential": true,
-                    "logConfiguration": {
-                        "logDriver": "awslogs",
-                        "options": {
-                            "awslogs-group": "/ecs/test-log-group",
-                            "awslogs-region": "${region}",
-                            "awslogs-create-group": "true",
-                            "awslogs-stream-prefix": "ecs"
-                        }
-                    }
-                }
-            ],
-            "family": "test-task-definition-dev",
-            "taskRoleArn": "${taskRoleArn}",
-            "executionRoleArn": "${executionRoleArn}",
-            "networkMode": "awsvpc",
-            "volumes": [],
-            "cpu": "${cpu}",
-            "memory": "${memory}",
-            "placementConstraints": [],
-            "requiresCompatibilities": ["FARGATE"]
-        }'
-
-        echo \$json > td.json
-
-        # Register the new task definition
-        aws ecs register-task-definition --region ${region} --cli-input-json file://td.json
+def deployToECS(String containerName, String newImage, String region, String cluster, String service,) {
+    // Read the existing task definition file
+    def taskDefinitionFile = new File('../td.json')
     
-        # Get the revision number
-        REVISION=\$(aws ecs describe-task-definition --task-definition test-task-definition-dev --region ${region} --query taskDefinition.revision --output text)
-        
-        # Update the service with the new task definition
-        aws ecs update-service --cluster ${cluster} --service ${service} --region ${region} --task-definition test-task-definition-dev:\$REVISION
+    // Update the task definition JSON with new values
+    def updatedJson = taskDefinitionFile.text.replaceAll(/("image":\s*")[^"]*"/, "$1${newImage}\"")
+
+    // Write updated JSON to a new file
+    def updatedTaskDefinitionFile = new File('td-updated.json')
+    updatedTaskDefinitionFile.write(updatedJson)
+
+    // Register the new task definition
+    sh """
+    aws ecs register-task-definition --region ${region} --cli-input-json file://td-updated.json
+    """
+
+    // Get the revision number of the new task definition
+    def revision = sh(script: "aws ecs describe-task-definition --task-definition ${containerName} --region ${region} --query taskDefinition.revision --output text", returnStdout: true).trim()
+
+    // Update the ECS service with the new task definition
+    sh """
+    aws ecs update-service --cluster ${cluster} --service ${service} --region ${region} --task-definition ${containerName}:\${revision}
     """
 }
