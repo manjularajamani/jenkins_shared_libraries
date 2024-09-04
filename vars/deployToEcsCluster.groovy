@@ -1,4 +1,4 @@
-def deployToECS(String containerName, String newImage, String region, String cluster, String service,) {
+def deployToECS(String containerName, String newImage, String region, String cluster, String service) {
     // Read the existing task definition file
     def taskDefinitionFile = new File('../td.json')
     
