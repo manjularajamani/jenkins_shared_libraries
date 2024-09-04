@@ -26,19 +26,35 @@
 ```
 @Library("shared-lib@master") _
 
-node('vagrant-slave') {
-
+node('slave') {
+    def region = 'us-east-1'
+    def containerName = 'test-dev'
+    def imageName = 'sit-ui-dev'
+    def imageTag = '10'
+    def registryUrl = 'https://533980823513.dkr.ecr.us-east-1.amazonaws.com'
+    def credentialId = 'ecr:us-east-1:fbb64b6e-5820-4f84-97f2-3c05385cbe1a'
+    def clusterName = 'test-dev'
+    def serviceName = 'test-service-dev'
+    def cpu = '512'
+    def memory = '2048'
+    def port = 80
+    def taskRoleArn = "arn:aws:iam::533980823513:role/test-task-role"
+    def executionRoleArn = "arn:aws:iam::533980823513:role/test-execution-role"
+    
     stage('Clone Repo') {
         checkoutCode.CloneRepo("https://github.com/thejungwon/docker-reactjs.git", "master")
         echo "Working directory: ${env.WORKSPACE}"
     }
 
     stage('Build and Push Docker Image') {
-        def registryUrl = 'https://<aws-account-id>.dkr.ecr.us-east-2.amazonaws.com'
-        def credentialId = 'ecr:us-east-2:<credential-id>'
-
-
         dockerBuildAndPush.BuildAndPush(registryUrl, credentialId)
+    }
+
+    stage('Deploy app into ECS') {
+        def newImage = "${registryUrl}/${imageName}:${imageTag}"
+        
+        // Call the Groovy function from the shared library
+        deployToEcsCluster.deployToECS(containerName, newImage, region, executionRoleArn, taskRoleArn, cpu, memory, clusterName, serviceName, port)
     }
 }
 
