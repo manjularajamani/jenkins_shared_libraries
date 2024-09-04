@@ -1,5 +1,5 @@
-def deployToECS(String awsCredentialsId, String awsRegion, String ecsClusterName, String ecsServiceName, String ecsTaskFamily, String dockerImageTag) {
-    withCredentials([usernamePassword(credentialsId: awsCredentialsId, usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+def call(String awsCredentialsId, String awsRegion, String ecsClusterName, String ecsServiceName, String ecsTaskFamily, String dockerImageTag) {
+    withAWS(credentials: awsCredentialsId, region: awsRegion) {
         script {
             // Step 1: Fetch the current task definition
             def taskDefinition = sh(
