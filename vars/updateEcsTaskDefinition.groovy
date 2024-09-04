@@ -1,50 +1,52 @@
-def updateTaskDefinition(String clusterName, String serviceName, String containerName, String newImage, String region) {
-    // Define the task definition JSON
-    def ecsTaskDef = [
-        "containerDefinitions": [
-            [
-                "name": containerName,
-                "image": newImage,
-                "cpu": 0,
-                "portMappings": [
-                    [
-                        "containerPort": 80,
-                        "hostPort": 80,
-                        "protocol": "tcp"
-                    ]
-                ],
-                "essential": true,
-                "logConfiguration": [
-                    "logDriver": "awslogs",
-                    "options": [
-                        "awslogs-group": "/ecs/test-log-group",
-                        "awslogs-region": region,
-                        "awslogs-stream-prefix": "ecs"
-                    ]
-                ]
-            ]
-        ],
-        "family": "test-task-definition-dev",
-        "taskRoleArn": "arn:aws:iam::533980823513:role/test-task-role",
-        "executionRoleArn": "arn:aws:iam::533980823513:role/test-execution-role",
-        "networkMode": "awsvpc",
-        "cpu": "512",
-        "memory": "2048",
-        "requiresCompatibilities": ["FARGATE"]
-    ]
+def deployToECS(String family, String containerName, String newImage, String region, String logGroup, String executionRoleArn, String taskRoleArn, String cpu, String memory, String cluster, String service, int port) {
 
-    def ecsJson = new groovy.json.JsonBuilder(ecsTaskDef).toPrettyString()
+    sh """
+        # Prepare the JSON for the task definition
+        json='{
+            "containerDefinitions": [
+                {
+                    "name": "${containerName}",
+                    "image": "${newImage}",
+                    "cpu": 0,
+                    "portMappings": [
+                        {
+                            "containerPort": ${port},
+                            "hostPort": ${port},
+                            "protocol": "tcp"
+                        }
+                    ],
+                    "essential": true,
+                    "logConfiguration": {
+                        "logDriver": "awslogs",
+                        "options": {
+                            "awslogs-group": "/ecs/test-log-group",
+                            "awslogs-region": "${region}",
+                            "awslogs-create-group": "true",
+                            "awslogs-stream-prefix": "ecs"
+                        }
+                    }
+                }
+            ],
+            "family": "test-task-definition-dev",
+            "taskRoleArn": "${taskRoleArn}",
+            "executionRoleArn": "${executionRoleArn}",
+            "networkMode": "awsvpc",
+            "volumes": [],
+            "cpu": "${cpu}",
+            "memory": "${memory}",
+            "placementConstraints": [],
+            "requiresCompatibilities": ["FARGATE"]
+        }'
+
+        echo \$json > td.json
+
+        # Register the new task definition
+        aws ecs register-task-definition --family ${family} --region ${region} --execution-role-arn ${executionRoleArn} --task-role-arn ${taskRoleArn} --requires-compatibilities FARGATE --cpu ${cpu} --memory ${memory} --network-mode awsvpc --cli-input-json file://td.json
     
-    // Register the new task definition
-    def registerResult = sh(script: "aws ecs register-task-definition --cli-input-json '${ecsJson}' --region ${region}", returnStdout: true).trim()
-    echo "Task Definition Registered: ${registerResult}"
-    
-    def jsonResult = new groovy.json.JsonSlurper().parseText(registerResult)
-    def newTaskDefinitionArn = jsonResult.taskDefinition.taskDefinitionArn
-
-    // Update the ECS service with the new task definition
-    def deployResult = sh(script: "aws ecs update-service --cluster ${clusterName} --service ${serviceName} --task-definition ${newTaskDefinitionArn} --region ${region}", returnStdout: true).trim()
-    echo "ECS Service Updated: ${deployResult}"
-
-    return newTaskDefinitionArn
+        # Get the revision number
+        REVISION=\$(aws ecs describe-task-definition --task-definition ${family} --region ${region} --query taskDefinition.revision --output text)
+        
+        # Update the service with the new task definition
+        aws ecs update-service --cluster ${cluster} --service ${service} --region ${region} --task-definition ${family}:\$REVISION
+    """
 }

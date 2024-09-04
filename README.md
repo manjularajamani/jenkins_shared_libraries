@@ -5,7 +5,7 @@
 ### The following steps are carried out in the Jenkins dashboard:
 
 
-- Install the **AWS Credential**, **Docker pipeline** and **AWS ECR** plugin 
+- Install the **AWS Credential**, **Docker pipeline**, **Pipeline: AWS Steps** and **AWS ECR** plugin 
 - To access your AWS account, you need to create a user within the account and use that user's credentials: **ACCESS_KEY** and **SECRET_KEY**
 - Use **Credential ID** on pipeline
 - To access other shared libraries, the Jenkinsfile needs to use the **@Library** annotation
