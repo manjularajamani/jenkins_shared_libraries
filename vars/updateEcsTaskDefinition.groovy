@@ -19,7 +19,7 @@ def deployToECS(String family, String containerName, String newImage, String reg
                     "logConfiguration": {
                         "logDriver": "awslogs",
                         "options": {
-                            "awslogs-group": "/ecs/test-log-group",
+                            "awslogs-group": "${logGroup}",
                             "awslogs-region": "${region}",
                             "awslogs-create-group": "true",
                             "awslogs-stream-prefix": "ecs"
@@ -41,7 +41,7 @@ def deployToECS(String family, String containerName, String newImage, String reg
         echo \$json > td.json
 
         # Register the new task definition
-        aws ecs register-task-definition --family ${family} --region ${region} --execution-role-arn ${executionRoleArn} --task-role-arn ${taskRoleArn} --requires-compatibilities FARGATE --cpu ${cpu} --memory ${memory} --network-mode awsvpc --cli-input-json file://td.json
+        aws ecs register-task-definition --region ${region} --cli-input-json file://td.json
     
         # Get the revision number
         REVISION=\$(aws ecs describe-task-definition --task-definition ${family} --region ${region} --query taskDefinition.revision --output text)
