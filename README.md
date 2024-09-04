@@ -30,7 +30,6 @@ node('slave') {
     def region = 'us-east-1'
     def containerName = 'test-dev'
     def imageName = 'sit-ui-dev'
-    def imageTag = '10'
     def registryUrl = 'https://533980823513.dkr.ecr.us-east-1.amazonaws.com'
     def credentialId = 'ecr:us-east-1:fbb64b6e-5820-4f84-97f2-3c05385cbe1a'
     def clusterName = 'test-dev'
@@ -47,7 +46,7 @@ node('slave') {
     }
 
     stage('Deploy app into ECS') {
-        def newImage = "${registryUrl}/${imageName}:${imageTag}"
+        def newImage = "${registryUrl}/${imageName}:${env.BUILD_ID}"
         
         // Call the Groovy function from the shared library to deploy to ECS
         deployToEcsCluster.deployToECS(credentialId, region, clusterName, serviceName,ecsTaskFamily, newImage)
