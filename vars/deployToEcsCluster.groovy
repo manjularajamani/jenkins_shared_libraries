@@ -44,9 +44,9 @@ def deployToECS(String containerName, String newImage, String region, String exe
         aws ecs register-task-definition --region ${region} --cli-input-json file://td.json
     
         # Get the revision number
-        REVISION=\$(aws ecs describe-task-definition --task-definition ${family} --region ${region} --query taskDefinition.revision --output text)
+        REVISION=\$(aws ecs describe-task-definition --task-definition test-task-definition-dev --region ${region} --query taskDefinition.revision --output text)
         
         # Update the service with the new task definition
-        aws ecs update-service --cluster ${cluster} --service ${service} --region ${region} --task-definition ${family}:\$REVISION
+        aws ecs update-service --cluster ${cluster} --service ${service} --region ${region} --task-definition test-task-definition-dev:\$REVISION
     """
 }
