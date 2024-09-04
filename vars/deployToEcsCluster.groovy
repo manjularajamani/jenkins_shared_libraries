@@ -1,4 +1,4 @@
-def call(String awsCredentialsId, String awsRegion, String ecsClusterName, String ecsServiceName, String ecsTaskFamily, String dockerImageTag) {
+def deployToECS(String awsCredentialsId, String awsRegion, String ecsClusterName, String ecsServiceName, String ecsTaskFamily, String dockerImageTag) {
     withAWS(credentials: awsCredentialsId, region: awsRegion) {
         script {
             // Step 1: Fetch the current task definition
