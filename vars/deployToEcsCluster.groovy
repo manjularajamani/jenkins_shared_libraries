@@ -3,7 +3,7 @@ def deployToECS(String containerName, String newImage, String region, String clu
     def taskDefinitionFile = new File('../td.json')
     
     // Update the task definition JSON with new values
-    def updatedJson = taskDefinitionFile.text.replaceAll(/("image":\s*")[^"]*"/, "$1${newImage}\"")
+    def updatedJson = taskDefinitionFile.text.replaceAll(/("image":\s*")[^"]*"/, "\$1${newImage}\"")
 
     // Write updated JSON to a new file
     def updatedTaskDefinitionFile = new File('td-updated.json')
