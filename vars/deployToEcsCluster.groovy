@@ -1,6 +1,6 @@
 def deployToECS(String containerName, String newImage, String region, String cluster, String service) {
     // Read the existing task definition file
-    def taskDefinitionFile = new File('../td.json')
+    def taskDefinitionFilePath = '../td.json'
     
     // Update the task definition JSON with new values
     def updatedJson = taskDefinitionFile.text.replaceAll(/("image":\s*")[^"]*"/, "\$1${newImage}\"")
