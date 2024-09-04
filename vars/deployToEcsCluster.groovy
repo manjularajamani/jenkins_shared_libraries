@@ -1,62 +1,48 @@
-// def deployToECS(String containerName, String newImage, String region, String cluster, String service) {
-//     // Read the existing task definition file
-//     def taskDefinitionFilePath = '../td.json'
-    
-//     // Update the task definition JSON with new values
-//     def updatedJson = taskDefinitionFile.text.replaceAll(/("image":\s*")[^"]*"/, "\$1${newImage}\"")
+def deployToECS(Map config) {
+    def awsCredentialsId = config.awsCredentialsId
+    def awsRegion = config.awsRegion
+    def ecsClusterName = config.ecsClusterName
+    def ecsServiceName = config.ecsServiceName
+    def ecsTaskFamily = config.ecsTaskFamily
+    def dockerImageTag = config.dockerImageTag
 
-//     // Write updated JSON to a new file
-//     def updatedTaskDefinitionFile = new File('td-updated.json')
-//     updatedTaskDefinitionFile.write(updatedJson)
+    withCredentials([usernamePassword(credentialsId: awsCredentialsId)]) {
+        script {
+            // Step 1: Fetch the current task definition
+            def taskDefinition = sh(
+                script: "aws ecs describe-task-definition --task-definition ${ecsTaskFamily} --region ${awsRegion}",
+                returnStdout: true
+            ).trim()
 
-//     // Register the new task definition
-//     sh """
-//     aws ecs register-task-definition --region ${region} --cli-input-json file://td-updated.json
-//     """
+            def taskDefJson = new groovy.json.JsonSlurperClassic().parseText(taskDefinition).taskDefinition
+            def containerDef = taskDefJson.containerDefinitions[0]
 
-//     // Get the revision number of the new task definition
-//     def revision = sh(script: "aws ecs describe-task-definition --task-definition ${containerName} --region ${region} --query taskDefinition.revision --output text", returnStdout: true).trim()
+            // Step 2: Update the container image
+            containerDef.image = "${dockerImageTag}"
 
-//     // Update the ECS service with the new task definition
-//     sh """
-//     aws ecs update-service --cluster ${cluster} --service ${service} --region ${region} --task-definition ${containerName}:\${revision}
-//     """
-// }
+            // Step 3: Register a new revision of the task definition
+            def registerTaskDefResult = sh(
+                script: """
+                    aws ecs register-task-definition \
+                    --family ${ecsTaskFamily} \
+                    --container-definitions '${groovy.json.JsonOutput.toJson([containerDef])}' \
+                    --region ${awsRegion}
+                """,
+                returnStdout: true
+            ).trim()
 
+            def newTaskDefArn = new groovy.json.JsonSlurperClassic().parseText(registerTaskDefResult).taskDefinition.taskDefinitionArn
+            echo "New Task Definition ARN: ${newTaskDefArn}"
 
-def deployToECS(String containerName, String newImage, String region, String cluster, String service) {
-    // Define the path to the existing task definition file
-    def taskDefinitionFilePath = '../td.json'
-
-    // Print the current working directory for debugging
-    sh 'pwd'
-    
-    // Check if the file exists and print debug information
-    sh "ls -l ${taskDefinitionFilePath}"
-    
-    // Read the existing task definition file
-    def taskDefinitionFile = new File(taskDefinitionFilePath)
-    if (!taskDefinitionFile.exists()) {
-        error "Task definition file not found at path: ${taskDefinitionFilePath}"
+            // Step 4: Update the ECS service with the new task definition
+            sh """
+                aws ecs update-service \
+                --cluster ${ecsClusterName} \
+                --service ${ecsServiceName} \
+                --task-definition ${newTaskDefArn} \
+                --region ${awsRegion} \
+                --force-new-deployment
+            """
+        }
     }
-    
-    // Update the task definition JSON with new values
-    def updatedJson = taskDefinitionFile.text.replaceAll(/("image":\s*")[^"]*"/, "\$1${newImage}\"")
-
-    // Write updated JSON to a new file
-    def updatedTaskDefinitionFile = new File('td-updated.json')
-    updatedTaskDefinitionFile.write(updatedJson)
-
-    // Register the new task definition
-    sh """
-    aws ecs register-task-definition --region ${region} --cli-input-json file://td-updated.json
-    """
-
-    // Get the revision number of the new task definition
-    def revision = sh(script: "aws ecs describe-task-definition --task-definition ${containerName} --region ${region} --query taskDefinition.revision --output text", returnStdout: true).trim()
-
-    // Update the ECS service with the new task definition
-    sh """
-    aws ecs update-service --cluster ${cluster} --service ${service} --region ${region} --task-definition ${containerName}:\${revision}
-    """
 }
