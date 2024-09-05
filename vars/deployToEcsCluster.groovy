@@ -1,4 +1,4 @@
-def call(String awsRegion, String ecsClusterName, String ecsServiceName, String ecsTaskFamily) {
+def call(String awsRegion, String ecsClusterName, String ecsServiceName, String ecsTaskFamily, String imageName) {
     withCredentials([aws(accessKeyVariable: 'AWS_ACCESS_KEY_ID', credentialsId: 'aws-test', secretKeyVariable: 'AWS_SECRET_ACCESS_KEY')]) {
         script {
             sh """
@@ -12,7 +12,7 @@ def call(String awsRegion, String ecsClusterName, String ecsServiceName, String 
                 --requires-compatibilities FARGATE \
                 --cpu '256' \
                 --memory '512' \
-                --container-definitions "[{\\"name\\":\\"sleep\\",\\"image\\":\\"myrepo/sleep:latest\\",\\"cpu\\":10,\\"memory\\":10,\\"essential\\":true,\\"command\\":[\\"sleep\\",\\"360\\"]}]" \
+                --container-definitions "[{\\"name\\":\\"app\\",\\"image\\":\\"${imageName}\\",\\"cpu\\":10,\\"memory\\":10,\\"essential\\":true}]" \
                 --region ${awsRegion})
 
             # Parse the ARN of the new task definition
