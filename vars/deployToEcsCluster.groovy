@@ -1,4 +1,4 @@
-def deployToECS(String awsRegion, String ecsClusterName, String ecsServiceName, String ecsTaskFamily) {
+def call(String awsRegion, String ecsClusterName, String ecsServiceName, String ecsTaskFamily) {
     withCredentials([aws(accessKeyVariable: 'AWS_ACCESS_KEY_ID', credentialsId: 'aws-test', secretKeyVariable: 'AWS_SECRET_ACCESS_KEY')]) {
         script {
             sh """
